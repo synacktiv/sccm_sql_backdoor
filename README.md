@@ -3,11 +3,13 @@
 ## Installation
 You can install by cloning the repository and installing the dependencies.
 
+```sh
 $ git clone --recurse-submodules https://github.com/synacktiv/sccm_sql_backdoor
 $ cd sccm_sql_backdoor
 $ python3 -m venv .venv && source .venv/bin/activate
 $ python3 -m pip install -r requirements.txt
 
+```
 
 ## Usage
 
