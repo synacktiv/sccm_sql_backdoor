@@ -75,4 +75,5 @@ usage: sccm_sql_backdoor.py revert [-h] [-m MARKER]
 options:
   -h, --help           show this help message and exit
   -m, --marker MARKER  Override marker to trigger the backdoor (Default: ABC)
+  -a, --altauth        Use the MP's alternate authentication endpoint (Default: False)
 ```

