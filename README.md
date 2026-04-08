@@ -1,4 +1,6 @@
 # sccm_sql_backdoor
+A proof‑of‑concept tool that implants a controlled backdoor into a Management Point stored procedure, enabling indirect SQL execution through a legitimate MP HTTP service.
+
 
 ## Installation
 You can install by cloning the repository and installing the dependencies.
@@ -74,6 +76,8 @@ usage: sccm_sql_backdoor.py revert [-h] [-m MARKER]
 
 options:
   -h, --help           show this help message and exit
-  -m, --marker MARKER  Override marker to trigger the backdoor (Default: ABC)
   -a, --altauth        Use the MP's alternate authentication endpoint (Default: False)
+  -m, --marker MARKER  Override marker to trigger the backdoor (Default: ABC)
+  -k, --key KEY        Private key file for mTLS
+  -c, --cert CERT      Certificate file
 ```

