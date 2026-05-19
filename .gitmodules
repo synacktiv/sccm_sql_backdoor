@@ -1,6 +1,6 @@
-[submodule "CVE-2025-59213"]
-	path = CVE-2025-59213
-	url = git@github.com:synacktiv/CVE-2025-59213.git
 [submodule "CVE-2024-43468"]
 	path = CVE-2024-43468
-	url = git@github.com:synacktiv/CVE-2024-43468
+	url = https://github.com/synacktiv/CVE-2024-43468
+[submodule "CVE-2025-59213"]
+	path = CVE-2025-59213
+	url = https://github.com/synacktiv/CVE-2025-59213
